@@ -1,0 +1,4 @@
+dimod
+matplotlib
+dwave-samplers
+flask
