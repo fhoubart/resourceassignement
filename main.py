@@ -6,7 +6,8 @@ from dimod import ExactSolver
 import dimod
 from qubo import *
 from dimod.serialization.format import Formatter
-
+import math
+np.set_printoptions(linewidth=np.inf)
 
 def energy(Q,solution):
     e = 0
@@ -18,17 +19,36 @@ def energy(Q,solution):
 
 def test_model():
     model = super_easy_sample_problem()
+    
+    Q = empty_qubo(model)
+    penalty = 20
+    P1 = 30
+    P1bis = 20
+    N = model.nb_resources()
+    # Constraints for the y auxilliary variables
+    i = 2
+    f = 2
+    for r in range(model.nb_resources()):
+        add_quadratic_term(Q, y(model,i,f), x(model,i,r),(-1)*(N*P1+P1bis)*model.resources[r,f])
+        add_linear_term(Q,x(model,i,r),N*P1*model.resources[r,f])
+    add_linear_term(Q,y(model,i,f),N*P1bis)
+    print(f"N={N}, P1={P1}, P1bis={P1bis}, N*P1bis={N*P1bis}")
+    print(Q)
+    print(energy(Q,[1,0,0,0,   0,1,0,0,   0,0,0,1,    1,1,1,  1,1,1,  1,1,1,   1,1,1  ]))
+    print(energy(Q,[1,0,0,0,   0,1,0,0,   0,0,0,1,    1,1,1,  1,1,1,  1,1,0,   1,1,1  ]))
+
     Q = generate_qubo(model)
 
     solutions = [
+        [0,0,0,0,   0,0,0,0,   0,0,0,0,    0,0,0,  0,0,0,  0,0,0,   0,0,0  ],
         # perfect solution
         [1,0,0,0,   0,1,0,0,   0,0,0,1,    1,1,1,  1,1,1,  1,1,1,   1,1,1  ],
-        # Uncomplete solution
-        [1,0,0,0,   0,1,0,0,   0,0,1,0,    1,1,1,  1,1,1,  0,1,1,   1,1,0  ],
-        # Error in auxilliary z
-        [1,0,0,0,   0,1,0,0,   0,0,0,1,    1,1,1,  1,1,1,  1,1,1,   0,1,1  ],
         # Error in auxilliary y
         [1,0,0,0,   0,1,0,0,   0,0,0,1,    1,1,1,  1,1,1,  1,1,0,   1,1,1  ],
+        # Error in auxilliary z
+        [1,0,0,0,   0,1,0,0,   0,0,0,1,    1,1,1,  1,1,1,  1,1,1,   0,1,1  ],
+        # Uncomplete solution
+        [1,0,0,0,   0,1,0,0,   0,0,1,0,    1,1,1,  1,1,1,  0,1,1,   1,1,0  ],
         # Duplicate affectation
         [1,0,0,0,   0,1,0,0,   1,0,0,1,    1,1,1,  1,1,1,  1,1,1,   1,1,1  ],
         # Uncomplete solution with error on y to make it seems complete ERROR
@@ -38,15 +58,17 @@ def test_model():
 
     ]
 
+    Q1 = auxilliary_constraints1(model)
+    Q2 = auxilliary_constraints2(model)
     for i,s in enumerate(solutions):
         qubo_solution = {}
         for index,value in enumerate(s):
             qubo_solution[index] = value
         solution = qubo_solution_to_affectation_matrix(model,qubo_solution)
-        print(f"{i}: energy: {energy(Q,s)}, coverage: {model.coverage(solution)}")
+        print(f"{i}: energy: {energy(Q,s)}, coverage: {math.trunc(model.coverage(solution)*10)/10}, energyQ1: {energy(Q1,s)}, energyQ2: {energy(Q2,s)}")
 
 test_model()
-exit()
+
 
 model = small_sample_problem()
 print(model.task_features(1))
