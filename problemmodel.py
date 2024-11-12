@@ -94,6 +94,10 @@ class Solution:
     # coverage of the solution
     coverage = 0
 
+    # coverage of needs for each tasks
+    tasks_coverage = []
+    tasks_features_covered = []
+
     def __init__(self, model, solution, algorithm, time):
         self.model = model
         self.solution = solution
@@ -101,12 +105,25 @@ class Solution:
         self.time = time
         self.valid = model.check_solution(solution)
         self.coverage = model.coverage(solution)
+        for i in range(model.nb_tasks()):
+            features = model.task_features(i)
+            nb_feature_covered = 0
+            features_covered = []
+            for f in features:
+                for r in range(model.nb_resources()):
+                    if solution[i,r] == 1 and model.resources[r,f] == 1:
+                        nb_feature_covered += 1
+                        features_covered.append(f)
+                        break
+            self.tasks_coverage.append(nb_feature_covered/len(features))
+            self.tasks_features_covered.append(features_covered)
 
     def task_resources(self,i):
         """
         Return a list of the feature numbers needed by task i
         """
         return [index for index, value in enumerate(self.solution[i]) if value == 1]
+
 
 
 def big_sample_problem():
@@ -177,19 +194,19 @@ def small_sample_problem():
     # 5 schedules
     # 20 tasks
     resources = np.array([
-        [0, 1, 1, 0, 0, 1, 0, 0, 0],
+        [1, 1, 1, 0, 0, 1, 0, 0, 0],
         [0, 0, 0, 1, 0, 1, 0, 0, 0],
         [1, 1, 0, 0, 1, 0, 1, 0, 0],
         [0, 1, 0, 0, 1, 1, 0, 1, 1],
-        [0, 0, 0, 0, 0, 0, 1, 1, 1]
+        [1, 0, 0, 0, 0, 0, 1, 1, 1]
     ])
 
     needs = np.array([
-        [1 , 1 , 0 , 1 , 0 , 0 , 0 , 0 , 0 ],
+        [1 , 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ],
         [0 , 1 , 0 , 1 , 0 , 0 , 0 , 1 , 0 ],
-        [0 , 1 , 0 , 0 , 0 , 1 , 1 , 1 , 1 ],
-        [1 , 0 , 1 , 0 , 0 , 0 , 1 , 1 , 0 ],
-        [1 , 0 , 0 , 0 , 0 , 1 , 0 , 1 , 0 ]
+        [0 , 0 , 0 , 0 , 0 , 0 , 0 , 1 , 1 ],
+        [1 , 0 , 0 , 0 , 0 , 0 , 1 , 1 , 0 ],
+        [0 , 0 , 0 , 0 , 1 , 1 , 0 , 0 , 0 ]
     ])
 
     schedules = np.array([
@@ -202,6 +219,32 @@ def small_sample_problem():
 
     return Problem(resources=resources, needs=needs, schedules=schedules)
 
+
+
+def super_easy_sample_problem():
+    # 5 resources
+    # 9 features
+    # 5 schedules
+    # 20 tasks
+    resources = np.array([
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+        [1, 1, 1]
+    ])
+
+    needs = np.array([
+        [1 , 0, 0],
+        [0 , 1, 0],
+        [1 , 0, 1]
+    ])
+
+    schedules = np.array([
+        [1, 0],
+        [0, 1],
+        [1, 1]
+    ])
+    return Problem(resources=resources, needs=needs, schedules=schedules)
 
 
 def tiny_sample_problem():

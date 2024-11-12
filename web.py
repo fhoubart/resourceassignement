@@ -2,6 +2,7 @@ from flask import Flask,redirect
 import problemmodel
 import colorsys
 import qubo
+import math
 
 app = Flask(__name__)
 
@@ -15,6 +16,18 @@ body {
 nbackground-color: black;
 kcolor: white;
 }
+.solution_detail {
+    border-collapse: collapse;
+    border: 1px solid;
+}
+.solution_detail td {
+    border-top: 1px solid;
+    border-bottom: 1px solid;
+    border-right: 1px dashed;
+    margin: 0;
+    text-align: center
+}
+
 .schedule_table {
     width: 100%;
     border-collapse: collapse;
@@ -88,12 +101,15 @@ def main():
     """+resource_table()+"""
             <h1>Solutions</h1>
     """+solutions_summary()+solutions_detail()+"""
+    <div>
+    <ul>
+    <li><a href="/solve/exact">Exact solver</a>
+    <li><a href="/solve/simulatedannealing">Simulated Annealing</a>
+    <li><a href="/solve/qpu">QPU</a>
+    </ul></div>
             <h1>Schedule Table</h1>
     """+model_table()+"""
-    <div>
-    <a href="/solve/exact">Exact solver</a>
-    <a href="/solve/simulatedannealing">Simulated Annealing</a>
-    </div>
+    
     """
     return html
 
@@ -107,9 +123,14 @@ def solutions_summary():
 def solutions_detail():
     html = ""
     for index,solution in enumerate(solutions):
-        html += f"<table id='solution{index}' class='solution_detail'><tr><th>Task</th><th>Resources</th></tr>"
+        html += f"<table id='solution{index}' class='solution_detail'><tr><th>Task</th><th>coverage</th><th>Resources</th><th>Features</th></tr>"
         for i in range(solution.model.nb_tasks()):
-            html += f"<tr><td>Task {i}</td><td>"+"".join(f"<div>{resource}</div>" for resource in solution.task_resources(i))+"</td>"
+            html += f"""<tr>
+                <td>Task {i}</td>
+                <td>{math.floor(solution.tasks_coverage[i]*100)}%</td>
+                <td>"""+"".join(f"<div>{resource}</div>" for resource in solution.task_resources(i))+"""</td>"
+                <td>"""+"".join(f"<div>{feature}</div>" for feature in solution.tasks_features_covered[i])+"""</td>"
+            """
         html += "</table>"
     return html
 
@@ -159,12 +180,20 @@ def solve_simulatedAnnealing():
     solutions.append(qubo.solve_with_simulatedAnnealing(model))
     return redirect("/model", code=302)
 
+@app.route("/solve/qpu")
+def solve_qpu():
+    global solutions
+    solutions.append(qubo.solve_on_dwave(model))
+    return redirect("/model", code=302)
+
 
 @app.route("/model/tiny")
 def load_tiny():
     global model
     global feature_colors
+    global solutions
     model = problemmodel.tiny_sample_problem()
+    solutions = []
     feature_colors = generate_contrasting_colors(model.nb_features())
     # Redirect to the root route "/"
     return redirect("/model", code=302)
@@ -173,7 +202,9 @@ def load_tiny():
 def load_small():
     global model
     global feature_colors
+    global solutions
     model = problemmodel.small_sample_problem()
+    solutions = []
     feature_colors = generate_contrasting_colors(model.nb_features())
     # Redirect to the root route "/"
     return redirect("/model", code=302)
@@ -182,7 +213,9 @@ def load_small():
 def load_big():
     global model
     global feature_colors
+    global solutions
     model = problemmodel.big_sample_problem()
+    solutions = []
     feature_colors = generate_contrasting_colors(model.nb_features())
     # Redirect to the root route "/"
     return redirect("/model", code=302)
