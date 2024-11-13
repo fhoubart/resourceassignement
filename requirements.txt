@@ -2,3 +2,4 @@ dimod
 matplotlib
 dwave-samplers
 flask
+dwave-system

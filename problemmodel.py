@@ -15,11 +15,13 @@ class Problem:
 
     # Solution = matrix nb(task) x nb(resources)
 
-    def __init__(self,resources = np.array([[]]),needs=np.array([[]]),schedules=np.array([[]])):
+    def __init__(self,resources = np.array([[]]),needs=np.array([[]]),schedules=np.array([[]]),values=np.array([])):
         self.resources = resources
         self.needs = needs
         self.schedules = schedules
+        self.values = values
         self.compatibles = np.zeros((self.nb_tasks(),self.nb_resources()))
+
         for i in range(self.nb_tasks()):
             for r in range(self.nb_resources()):
                 compatible = 1
@@ -104,6 +106,8 @@ class Solution:
     valid = True
     # coverage of the solution
     coverage = 0
+    # value
+    value = 0
 
     # coverage of needs for each tasks
     tasks_coverage = []
@@ -115,14 +119,20 @@ class Solution:
         self.algorithm = algorithm
         self.time = time
         self.valid = model.check_solution(solution)
+        self.value = 0
         self.coverage = model.coverage(solution)
+        self.tasks_coverage = []
+        self.tasks_features_covered = []
+
         for i in range(model.nb_tasks()):
             features = model.task_features(i)
             nb_feature_covered = 0
             features_covered = []
             for f in features:
+                print(f"Search for (i,f)=({i},{f})")
                 for r in range(model.nb_resources()):
                     if solution[i,r] == 1 and model.resources[r,f] == 1:
+                        print(f"  -> found for resource {r}")
                         nb_feature_covered += 1
                         features_covered.append(f)
                         break
@@ -131,6 +141,8 @@ class Solution:
             else:
                 self.tasks_coverage.append(nb_feature_covered/len(features))
             self.tasks_features_covered.append(features_covered)
+            if nb_feature_covered == len(features):
+                self.value += model.values[i]
 
     def task_resources(self,i):
         """
@@ -139,7 +151,7 @@ class Solution:
         return [index for index, value in enumerate(self.solution[i]) if value == 1]
 
     def __str__(self):
-        return f"{self.algorithm} ({self.time}ms), score={math.floor(self.coverage*100)}%, valid={self.valid}"
+        return f"{self.algorithm} ({self.time}ms), score={math.floor(self.coverage*100)}%, valid={self.valid}\n"+str(self.solution)
 
 def big_sample_problem():
     # 5 resources
@@ -199,8 +211,8 @@ def big_sample_problem():
         [1, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 1, 1, 0]
     ])
-
-    return Problem(resources=resources, needs=needs, schedules=schedules)
+    values = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+    return Problem(resources=resources, needs=needs, schedules=schedules,values=values)
 
 
 def random_problem(nb_tasks,nb_resources,nb_features,nb_schedules):
@@ -217,7 +229,10 @@ def random_problem(nb_tasks,nb_resources,nb_features,nb_schedules):
     for i in range(nb_tasks):
         for s in range(nb_schedules):
             schedules[i,s] = random.choices([1, 0], weights=[50, 50], k=1)[0]
-    return Problem(resources=resources, needs=needs, schedules=schedules)
+    values = np.zeros((nb_tasks))
+    for i in range(nb_tasks):
+        values[i] = random.randint(100,500)/100
+    return Problem(resources=resources, needs=needs, schedules=schedules, values=values)
     
 def small_sample_problem():
     # 5 resources
@@ -247,8 +262,9 @@ def small_sample_problem():
         [0, 0, 1, 0, 0, 0, 0],
         [0, 0, 1, 1, 0, 0, 0]
     ])
+    values = np.array([1,1,1,1,1])
 
-    return Problem(resources=resources, needs=needs, schedules=schedules)
+    return Problem(resources=resources, needs=needs, schedules=schedules, values=values)
 
 
 def super_easy_sample_problem():
@@ -274,7 +290,8 @@ def super_easy_sample_problem():
         [0, 1],
         [1, 1]
     ])
-    return Problem(resources=resources, needs=needs, schedules=schedules)
+    values = np.array([1,1,1])
+    return Problem(resources=resources, needs=needs, schedules=schedules, values=values)
 
 
 def tiny_sample_problem():
@@ -303,6 +320,7 @@ def tiny_sample_problem():
         [1, 1, 1, 0, 0, 0, 0],
         [0, 1, 1, 1, 0, 0, 0]
     ])
+    values = np.array([1,1,1,1])
 
 
-    return Problem(resources=resources, needs=needs, schedules=schedules)
+    return Problem(resources=resources, needs=needs, schedules=schedules, values=values)

@@ -115,7 +115,7 @@ def main():
     </ul></div>
     """+solutions_summary()+"""<div class="solutions_detail">"""+solutions_detail()+"""</div>
 
-            <h1>Schedule Table</h1>
+            <h1>Tasks</h1>
     """+model_table()+"""
     <h1>Raw data</h1>
     <h3>model.resources</h3><pre>"""+np.array2string(model.resources, suppress_small=True, max_line_width=np.inf)+"""</pre>
@@ -124,10 +124,13 @@ def main():
     """
     return html
 
+def formatdec(f):
+    return math.floor(f*100)/100
+    
 def solutions_summary():
-    html = "<table><tr><th>Algorithm</th><th>Time</th><th>Score</th><th>Valid</th></tr>"
+    html = "<table><tr><th>Algorithm</th><th>Time</th><th>Score</th><th>Valid</th><th>Value</th></tr>"
     for solution in solutions:
-        html += f"<tr><td>{solution.algorithm}</td><td>{solution.time}</td><td>{solution.coverage}</td><td>{solution.valid}</td></tr>"
+        html += f"<tr><td>{solution.algorithm}</td><td>{solution.time}</td><td>{solution.coverage}</td><td>{solution.valid}</td><td>{formatdec(solution.value)}</td></tr>"
     html += "</table>"
     return html
 
@@ -167,7 +170,7 @@ def model_table():
         html += f"<th>{s}</th>"
     html += "</tr>"
     for i in range(model.nb_tasks()):
-        html += f"<tr><td>Task {i}</td>"
+        html += f"<tr><td>Task {i} (+{model.values[i]}€)</td>"
         for s in range(model.nb_schedules()):
             html += "<td>"
             if(model.schedules[i,s] == 1):
@@ -236,7 +239,7 @@ def load_verybig():
     global model
     global feature_colors
     global solutions
-    model = problemmodel.random_problem(50,25,5,10)
+    model = problemmodel.random_problem(80,40,10,10)
     solutions = []
     feature_colors = generate_contrasting_colors(model.nb_features())
     # Redirect to the root route "/"

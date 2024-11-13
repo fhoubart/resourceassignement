@@ -88,11 +88,12 @@ def bonus_1_needs_fulfilled(model):
     Add a bonus if the ressource(s) affected to a task fullfill its needs
     """
     Q = empty_qubo(model)
-    bonus = -10
+    bonus = -2
     for i in range(model.nb_tasks()):
         for r in range(model.nb_resources()):
-            add_linear_term(Q,x(model,i,r),bonus*model.compatibles[i,r])
+            add_linear_term(Q,x(model,i,r),model.values[i]*bonus*model.compatibles[i,r])
     return Q
+
 
 def generate_qubo(model):
     return constraint_1_duplicate(model) + bonus_1_needs_fulfilled(model) + constraint_2_single_assignement(model)
