@@ -67,7 +67,7 @@ def test_model():
         solution = qubo_solution_to_affectation_matrix(model,qubo_solution)
         print(f"{i}: energy: {energy(Q,s)}, coverage: {math.trunc(model.coverage(solution)*10)/10}, energyQ1: {energy(Q1,s)}, energyQ2: {energy(Q2,s)}")
 
-test_model()
+#test_model()
 
 
 model = small_sample_problem()
@@ -83,9 +83,9 @@ sampler = SimulatedAnnealingSampler()
 sampleset = sampler.sample(bqm,num_reads=1000, beta_schedule_type='linear', initial_state_generator="random")
 #sampleset = ExactSolver().sample(bqm)
 #sampleset = RandomSampler().sample(bqm,num_reads=200000)
-print(bqm.quadratic)
-print(bqm.linear)
-print(sum(bqm.linear))
+#print(bqm.quadratic)
+#print(bqm.linear)
+#print(sum(bqm.linear))
 #exit()
 Formatter(depth=10).fprint(sampleset)
 
@@ -95,6 +95,8 @@ print(f"  - tasks: {model.nb_tasks()}")
 print(f"  - resources: {model.nb_resources()}")
 print(f"  - schedules: {model.nb_schedules()}")
 print(f"  - features: {model.nb_features()}")
+print("Compatibles assignments:")
+print(model.compatibles)
 print('Qubo solution:')
 num=0
 for data in sampleset.data():

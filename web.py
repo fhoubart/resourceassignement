@@ -3,6 +3,7 @@ import problemmodel
 import colorsys
 import qubo
 import math
+import numpy as np
 
 app = Flask(__name__)
 
@@ -16,9 +17,15 @@ body {
 nbackground-color: black;
 kcolor: white;
 }
+div.solutions_detail {
+    display: flex;
+    gap: 20px; /* space between tables */
+}
 .solution_detail {
     border-collapse: collapse;
     border: 1px solid;
+    float: left;
+    margin-left: 20px;
 }
 .solution_detail td {
     border-top: 1px solid;
@@ -100,16 +107,20 @@ def main():
             <h1>Resources</h1>
     """+resource_table()+"""
             <h1>Solutions</h1>
-    """+solutions_summary()+solutions_detail()+"""
-    <div>
+                <div>
     <ul>
     <li><a href="/solve/exact">Exact solver</a>
     <li><a href="/solve/simulatedannealing">Simulated Annealing</a>
     <li><a href="/solve/qpu">QPU</a>
     </ul></div>
+    """+solutions_summary()+"""<div class="solutions_detail">"""+solutions_detail()+"""</div>
+
             <h1>Schedule Table</h1>
     """+model_table()+"""
-    
+    <h1>Raw data</h1>
+    <h3>model.resources</h3><pre>"""+np.array2string(model.resources, suppress_small=True, max_line_width=np.inf)+"""</pre>
+    <h3>model.needs</h3><pre>"""+np.array2string(model.needs, suppress_small=True, max_line_width=np.inf)+"""</pre>
+    <h3>model.schedules</h3><pre>"""+np.array2string(model.schedules, suppress_small=True, max_line_width=np.inf)+"""</pre>
     """
     return html
 
@@ -123,13 +134,13 @@ def solutions_summary():
 def solutions_detail():
     html = ""
     for index,solution in enumerate(solutions):
-        html += f"<table id='solution{index}' class='solution_detail'><tr><th>Task</th><th>coverage</th><th>Resources</th><th>Features</th></tr>"
+        html += f"<table id='solution{index}' class='solution_detail'><tr><th colspan='4'>{solution.algorithm}</th></tr><tr><th>Task</th><th>coverage</th><th>Resources</th><th>Features</th></tr>"
         for i in range(solution.model.nb_tasks()):
             html += f"""<tr>
                 <td>Task {i}</td>
                 <td>{math.floor(solution.tasks_coverage[i]*100)}%</td>
-                <td>"""+"".join(f"<div>{resource}</div>" for resource in solution.task_resources(i))+"""</td>"
-                <td>"""+"".join(f"<div>{feature}</div>" for feature in solution.tasks_features_covered[i])+"""</td>"
+                <td>"""+"".join(f"<div>{resource}</div>" for resource in solution.task_resources(i))+"""</td>
+                <td>"""+"".join(f"<div>{feature}</div>" for feature in solution.tasks_features_covered[i])+"""</td>
             """
         html += "</table>"
     return html
@@ -215,6 +226,17 @@ def load_big():
     global feature_colors
     global solutions
     model = problemmodel.big_sample_problem()
+    solutions = []
+    feature_colors = generate_contrasting_colors(model.nb_features())
+    # Redirect to the root route "/"
+    return redirect("/model", code=302)
+
+@app.route("/model/verybig")
+def load_verybig():
+    global model
+    global feature_colors
+    global solutions
+    model = problemmodel.random_problem(50,25,5,10)
     solutions = []
     feature_colors = generate_contrasting_colors(model.nb_features())
     # Redirect to the root route "/"

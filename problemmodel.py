@@ -1,4 +1,6 @@
 import numpy as np
+import random
+import math
 
 class Problem:
     # Matrix nb(resources)xnb(features)
@@ -17,6 +19,15 @@ class Problem:
         self.resources = resources
         self.needs = needs
         self.schedules = schedules
+        self.compatibles = np.zeros((self.nb_tasks(),self.nb_resources()))
+        for i in range(self.nb_tasks()):
+            for r in range(self.nb_resources()):
+                compatible = 1
+                for f in range(self.nb_features()):
+                    if self.needs[i,f] == 1 and self.resources[r,f] == 0:
+                        compatible = 0
+                        break
+                self.compatibles[i,r] = compatible
 
     def nb_schedules(self):
         return self.schedules.shape[1]
@@ -115,7 +126,10 @@ class Solution:
                         nb_feature_covered += 1
                         features_covered.append(f)
                         break
-            self.tasks_coverage.append(nb_feature_covered/len(features))
+            if len(features) ==0:
+                self.tasks_coverage.append(0)
+            else:
+                self.tasks_coverage.append(nb_feature_covered/len(features))
             self.tasks_features_covered.append(features_covered)
 
     def task_resources(self,i):
@@ -124,7 +138,8 @@ class Solution:
         """
         return [index for index, value in enumerate(self.solution[i]) if value == 1]
 
-
+    def __str__(self):
+        return f"{self.algorithm} ({self.time}ms), score={math.floor(self.coverage*100)}%, valid={self.valid}"
 
 def big_sample_problem():
     # 5 resources
@@ -132,16 +147,16 @@ def big_sample_problem():
     # 5 schedules
     # 20 tasks
     resources = np.array([
-        [0, 1, 1, 0, 0, 1, 0, 0, 0],
-        [0, 0, 0, 1, 0, 1, 0, 0, 0],
-        [1, 1, 0, 0, 1, 0, 1, 0, 0],
-        [0, 1, 0, 0, 1, 1, 0, 1, 1],
-        [0, 0, 0, 0, 0, 0, 1, 1, 1]
+        [1, 1, 1, 0, 0, 1, 0, 0, 0],
+        [0, 1, 1, 1, 0, 1, 1, 0, 0],
+        [1, 1, 1, 0, 1, 1, 1, 0, 0],
+        [0, 1, 1, 1, 1, 1, 0, 1, 1],
+        [1, 0, 0, 0, 0, 0, 1, 1, 1]
     ])
 
     needs = np.array([
-        [1 , 1 , 0 , 1 , 0 , 0 , 0 , 0 , 0 ],
-        [0 , 1 , 0 , 1 , 0 , 0 , 0 , 1 , 0 ],
+        [1 , 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ],
+        [0 , 0 , 0 , 1 , 0 , 0 , 0 , 1 , 0 ],
         [0 , 1 , 0 , 0 , 0 , 1 , 1 , 1 , 1 ],
         [1 , 0 , 1 , 0 , 0 , 0 , 1 , 1 , 0 ],
         [1 , 0 , 0 , 0 , 0 , 1 , 0 , 1 , 0 ],
@@ -188,6 +203,22 @@ def big_sample_problem():
     return Problem(resources=resources, needs=needs, schedules=schedules)
 
 
+def random_problem(nb_tasks,nb_resources,nb_features,nb_schedules):
+    resources = np.zeros((nb_resources, nb_features))
+    for r in range(nb_resources):
+        for f in range(nb_features):
+            resources[r,f] = random.choices([1, 0], weights=[80, 20], k=1)[0]
+    needs = np.zeros((nb_tasks, nb_features))
+    for i in range(nb_tasks):
+        for f in range(nb_features):
+            needs[i,f] = random.choices([1, 0], weights=[20, 80], k=1)[0]
+        needs[i,random.randint(0,nb_features-1)] = 1
+    schedules = np.zeros((nb_tasks, nb_schedules))
+    for i in range(nb_tasks):
+        for s in range(nb_schedules):
+            schedules[i,s] = random.choices([1, 0], weights=[50, 50], k=1)[0]
+    return Problem(resources=resources, needs=needs, schedules=schedules)
+    
 def small_sample_problem():
     # 5 resources
     # 9 features
@@ -218,7 +249,6 @@ def small_sample_problem():
     ])
 
     return Problem(resources=resources, needs=needs, schedules=schedules)
-
 
 
 def super_easy_sample_problem():

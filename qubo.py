@@ -4,6 +4,8 @@ import numpy as np
 from dwave.samplers import SimulatedAnnealingSampler
 from dwave.samplers import RandomSampler
 from dwave.system import DWaveSampler, EmbeddingComposite
+from dwave.system import LeapHybridSampler
+
 from dimod import ExactSolver
 import dimod
 import time
@@ -46,7 +48,7 @@ def qubomodel_to_index(model,q):
     return (i,r)
 
 def empty_qubo(model):
-    return np.zeros((model.nb_tasks()*(model.nb_resources()+model.nb_features()+1),model.nb_tasks()*(model.nb_resources()+model.nb_features()+1)))
+    return np.zeros((model.nb_tasks()*model.nb_resources(),model.nb_tasks()*model.nb_resources()))
 
 def add_quadratic_term(Q,index1,index2,coef):
     Q[index1,index2] += coef/2
@@ -55,7 +57,7 @@ def add_quadratic_term(Q,index1,index2,coef):
 def add_linear_term(Q, index, coef):
     Q[index,index] += coef
 
-def schedule_qubo(model):
+def constraint_1_duplicate(model):
     """
     Add the penality if the same resource is affected to two tasks at the same schedule
     """
@@ -68,67 +70,32 @@ def schedule_qubo(model):
                     Q[index_to_qubomodel(model,i,r),index_to_qubomodel(model,j,r)] += penalty*model.schedules[i,s]*model.schedules[j,s]
                     Q[index_to_qubomodel(model,j,r),index_to_qubomodel(model,i,r)] += penalty*model.schedules[i,s]*model.schedules[j,s]
     return Q
-
-def auxilliary_constraints1(model):
-    """
-    Generate the penalty terms for the y(i,f) auxilliary variables
-    """
-    Q = empty_qubo(model)
-    penalty = 20
-    P1 = 30
-    P1bis = 20
-    N = model.nb_resources()
-    # Constraints for the y auxilliary variables
-    for i in range(model.nb_tasks()):
-        for f in range(model.nb_features()):
-            for r in range(model.nb_resources()):
-                add_quadratic_term(Q, y(model,i,f), x(model,i,r),(-1)*(N*P1+P1bis)*model.resources[r,f])
-                add_linear_term(Q,x(model,i,r),N*P1*model.resources[r,f])
-            add_linear_term(Q,y(model,i,f),N*P1bis)
-    return Q
-
-def auxilliary_constraints2(model):
-    """
-    Generate the penalty terms for the z(i) auxilliary variables
-    """
-    # Constraints for the z auxilliary variables
-    Q = empty_qubo(model)
-    P2 = model.nb_resources()*40
-    for i in range(model.nb_tasks()):
-        for f in range(model.nb_features()):
-            add_linear_term(Q, z(model,i), P2*model.needs[i,f])
-            add_quadratic_term(Q, y(model,i,f), z(model,i), (-1)*P2*model.needs[i,f])
-
-    return Q
-
-
-def bonus_all_features(model):
-    """
-    Add a bonus if a task fulfill all its needs.
-    Problem with multiple resource assignment!
-    """
-    Q = empty_qubo(model)
-    bonus = -500
-    for f in range(model.nb_features()):
-        for i in range(model.nb_tasks()):
-            for r in range(model.nb_resources()):
-                add_linear_term(Q, z(model,i), bonus)
-    return Q
     
-def single_assignement_qubo(model):
+def constraint_2_single_assignement(model):
     """
     Add a penality if multiple resources are assigned to the same task
     """
     Q = empty_qubo(model)
-    penalty = 5
+    penalty = 20
     for i in range(model.nb_tasks()):
         for r1 in range(model.nb_resources()):
             for r2 in range(r1+1,model.nb_resources()):
                 add_quadratic_term(Q, index_to_qubomodel(model,i,r1), index_to_qubomodel(model,i,r2), penalty)
     return Q
 
+def bonus_1_needs_fulfilled(model):
+    """
+    Add a bonus if the ressource(s) affected to a task fullfill its needs
+    """
+    Q = empty_qubo(model)
+    bonus = -10
+    for i in range(model.nb_tasks()):
+        for r in range(model.nb_resources()):
+            add_linear_term(Q,x(model,i,r),bonus*model.compatibles[i,r])
+    return Q
+
 def generate_qubo(model):
-    return schedule_qubo(model) + bonus_all_features(model) + auxilliary_constraints1(model) + auxilliary_constraints2(model)# +  single_assignement_qubo(model)
+    return constraint_1_duplicate(model) + bonus_1_needs_fulfilled(model) + constraint_2_single_assignement(model)
     #return schedule_qubo(model) + needs_bonus(model) + auxilliary_constraints(model) + single_assignement_qubo(model)
 
 def qubo_solution_to_affectation_matrix(model,sample):
@@ -142,7 +109,9 @@ def solve_with_exactSolver(model):
     duration = (time.time() - start)*1000
     qubo_solution = sampleset.first.sample
     solution = qubo_solution_to_affectation_matrix(model,qubo_solution)
-    return problemmodel.Solution(model,solution,"Exact Solver",duration)
+    result = problemmodel.Solution(model,solution,"Exact Solver",duration)
+    print(result)
+    return result
 
 def solve_with_simulatedAnnealing(model):
     Q = generate_qubo(model)
@@ -152,18 +121,30 @@ def solve_with_simulatedAnnealing(model):
     duration = (time.time() - start)*1000
     qubo_solution = sampleset.first.sample
     solution = qubo_solution_to_affectation_matrix(model,qubo_solution)
-    return problemmodel.Solution(model,solution,"SimulatedAnnealing",duration)
+    print("--- SimulatedAnnealing ---")
+    print("Solution")
+    print(solution)
+    result = problemmodel.Solution(model,solution,"SimulatedAnnealing",duration)
+    print(result)
+    return result
 
 def solve_on_dwave(model):
+    print("generating qubo function...")
     Q = generate_qubo(model)
+    print("converting matrix to bqm...")
     bqm = dimod.BinaryQuadraticModel.from_numpy_matrix(Q)
     start = time.time()
-
-    sampler = EmbeddingComposite(DWaveSampler())   
-    sampleset = sampler.sample(bqm,num_reads=100)
+    print("starting sampler...")
+    #sampler = EmbeddingComposite(DWaveSampler())
+    #sampleset = sampler.sample(bqm,num_reads=100)
+    sampler = LeapHybridSampler(solver={'category': 'hybrid'})
+    sampleset = sampler.sample(bqm)
 
     print(sampleset.lowest(atol=.5))  
     duration = (time.time() - start)*1000
     qubo_solution = sampleset.first.sample
+    print("converting output to solution...")
     solution = qubo_solution_to_affectation_matrix(model,qubo_solution)
-    return problemmodel.Solution(model,solution,"DWave QPU",duration)
+    result = problemmodel.Solution(model,solution,"DWave QPU",duration)
+    print(result)
+    return result
